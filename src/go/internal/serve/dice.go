@@ -63,6 +63,7 @@ func handleDice(w http.ResponseWriter, r *http.Request) {
 		Dice: dice,
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	encoder.Encode(result)
 }

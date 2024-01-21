@@ -25,6 +25,7 @@ func ServeDie() error {
 
 func handleDie(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(w)
+	sides := 6
 
 	switch r.Method {
 	case "POST":
@@ -39,18 +40,17 @@ func handleDie(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		encoder.Encode(Die{
-			Sides: roll.Sides,
-			Value: rollN(roll.Sides),
-		})
+		sides = roll.Sides
 
 	case "GET":
-		sides := 6
-		encoder.Encode(&Die{
-			Sides: sides,
-			Value: rollN(sides),
-		})
+		sides = 6
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	encoder.Encode(&Die{
+		Sides: sides,
+		Value: rollN(sides),
+	})
 }
 
 func rollN(sides int) int {
