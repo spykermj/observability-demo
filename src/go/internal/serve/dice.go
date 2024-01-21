@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 )
 
 // Request to roll multiple dice
@@ -21,7 +22,11 @@ type Dice struct {
 
 func ServeDice() error {
 	http.HandleFunc("/roll_dice", handleDice)
-	return http.ListenAndServe(diceAddr(), nil)
+	server := &http.Server{
+		Addr: diceAddr(),
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	return server.ListenAndServe()
 }
 
 func handleDice(w http.ResponseWriter, r *http.Request) {

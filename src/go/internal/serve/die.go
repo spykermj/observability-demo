@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"time"
 )
 
 // Representation of a single die
@@ -20,7 +21,11 @@ type DieRoll struct {
 
 func ServeDie() error {
 	http.HandleFunc("/roll_die", handleDie)
-	return http.ListenAndServe(dieAddr(), nil)
+	server := &http.Server{
+		Addr: dieAddr(),
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	return server.ListenAndServe()
 }
 
 func handleDie(w http.ResponseWriter, r *http.Request) {
