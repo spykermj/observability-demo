@@ -1,0 +1,17 @@
+FROM golang:1.21.6 as build
+
+WORKDIR /app
+
+COPY . .
+
+RUN CGO_ENABLED=0 go build ./cmd/die-server
+
+FROM scratch
+WORKDIR /app
+
+COPY --from=build /app/die-server /app/die-server
+COPY --from=build /etc/passwd /etc/passwd
+
+USER nobody
+
+ENTRYPOINT ["/app/die-server"]
