@@ -1,12 +1,20 @@
+// TODO: implement auto traces
+// https://github.com/open-telemetry/opentelemetry-go-contrib/blob/main/instrumentation/net/http/httptrace/otelhttptrace/example/server/server.go
 package serve
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"spykerman.co.uk/roller/internal/otel"
 )
 
 // Request to roll multiple dice
@@ -19,11 +27,11 @@ type Dice struct {
 	Dice []Die `json:"dice"`
 }
 
-
 func ServeDice() error {
-	http.HandleFunc("/roll_dice", handleDice)
+	handler := otelhttp.NewHandler(http.HandlerFunc(handleDice), otel.ServiceName())
+	http.Handle("/roll_dice", handler)
 	server := &http.Server{
-		Addr: diceAddr(),
+		Addr:              diceAddr(),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	return server.ListenAndServe()
@@ -45,7 +53,6 @@ func handleDice(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-
 	case "GET":
 		roll.Sides = []int{6, 6}
 	}
@@ -56,7 +63,7 @@ func handleDice(w http.ResponseWriter, r *http.Request) {
 
 	for i := 0; i < len(roll.Sides); i++ {
 		dice[i].Sides = roll.Sides[i]
-		d, err := rollDie(roll.Sides[i])
+		d, err := rollDie(r.Context(), roll.Sides[i])
 		if err != nil {
 			status = http.StatusInternalServerError
 		} else {
@@ -73,7 +80,7 @@ func handleDice(w http.ResponseWriter, r *http.Request) {
 	encoder.Encode(result)
 }
 
-func rollDie(sides int) (Die, error) {
+func rollDie(ctx context.Context, sides int) (Die, error) {
 	roll := DieRoll{Sides: sides}
 
 	d := Die{}
@@ -84,7 +91,14 @@ func rollDie(sides int) (Die, error) {
 		return d, err
 	}
 
-	client := http.DefaultClient
+	client := http.Client{
+		Transport: otelhttp.NewTransport(
+			http.DefaultTransport,
+			otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+				return otelhttptrace.NewClientTrace(ctx)
+			}),
+		),
+	}
 
 	response, err := client.Post(fmt.Sprintf("http://%s/roll_die",
 		dieAddr()),

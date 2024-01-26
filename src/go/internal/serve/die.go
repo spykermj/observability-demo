@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"spykerman.co.uk/roller/internal/otel"
 )
 
 // Representation of a single die
@@ -20,9 +23,10 @@ type DieRoll struct {
 }
 
 func ServeDie() error {
-	http.HandleFunc("/roll_die", handleDie)
+	handler := otelhttp.NewHandler(http.HandlerFunc(handleDie), otel.ServiceName())
+	http.Handle("/roll_die", handler)
 	server := &http.Server{
-		Addr: dieAddr(),
+		Addr:              dieAddr(),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	return server.ListenAndServe()
