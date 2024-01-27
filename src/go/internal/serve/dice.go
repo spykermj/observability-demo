@@ -61,6 +61,8 @@ func handleDice(w http.ResponseWriter, r *http.Request) {
 
 	status := http.StatusOK
 
+	// TODO: fix traces as there is only one span even if we go through this loop
+	// multiple times
 	for i := 0; i < len(roll.Sides); i++ {
 		dice[i].Sides = roll.Sides[i]
 		d, err := rollDie(r.Context(), roll.Sides[i])
